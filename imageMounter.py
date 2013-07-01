@@ -48,8 +48,14 @@ def main():
 					md5, deep = hashing().fileHash(pathName, options.md5, options.ssdeep)
 					string = ("%s, %s, %s\n" % (pathName, md5, deep))
 					reportMain(outFile, string)
+		umountChoice = raw_input("Do you wish to unmount: y/n")
+		if umountChoice != "y" or umountChoice != "n":
+			umountChoice = raw_input("Do you wish to unmount: y/n")
+		elif umountChoise == "y":				
 			subprocess.call("(umount %s)"%(mnt_point), shell=True)
 			os.rmdir(mnt_point)
+		elif umountChoice == "n":
+			pass
 	endTime = datetime.now() - startTime
 	print endTime
 	print counter
@@ -62,13 +68,14 @@ class hashing:
 				data = fh.read()
 		except:
 			print "unable to open file %s" % filePath
-		if mdHash == True:
+			data = None
+		if data != None and mdHash == True:
 			m = hashlib.md5()
 			m.update(data)
 			md5 = m.hexdigest()
 		else:
 			md5 = "Null"
-		if deepHash == True:
+		if data != None and deepHash == True:
 			import ssdeep
 			deep = ssdeep.hash(data)
 		else:
@@ -85,13 +92,14 @@ class reportMain:
 class mountImage:
 	def parse_fdisk(self, img_name, mnt_location):
 		fdisk_output = commands.getoutput("(fdisk -l %s)"%(img_name))
+		print img_name
 		result = {}
 		mounts = []
 		diskPart = 0
 		for line in fdisk_output.split("\n"):
 			if line.startswith("Units"):
 				sector = int(line.split()[6])
-			if not line.startswith("10"): continue
+			if not line.startswith(img_name): continue
 			diskPart += 1
 			parts = line.split()
 			inf = {}
@@ -109,16 +117,23 @@ class mountImage:
 			inf['partition_id'] = int(parts[4], 16)
 			inf['partition_id_string'] = " ".join(parts[5:])
 			mnt_path = mnt_location + str(diskPart)
-			if not os.path.exists(mnt_path):
-				os.makedirs(mnt_path)
-			try:
-				retcode = subprocess.call("(mount -t ntfs -o ro,loop,offset=%s %s %s)"%(offset, img_name, mnt_path), shell=True)
-				mounts.append(mnt_path)
-			except:
-				print "Failed to Mount %s" % mnt_path
+			mountChoice = raw_input("Do you wish to mount: y/n")
+
+			if mountChoice == "n":				
+				continue
+			elif mountChoice == "y":
+
+				print "Creating Temp Mount Points at %s" % mnt_path
+				if not os.path.exists(mnt_path):
+					os.makedirs(mnt_path)
+				try:
+					retcode = subprocess.call("(mount -t ntfs -o ro,loop,offset=%s %s %s)"%(offset, img_name, mnt_path), shell=True)
+					mounts.append(mnt_path)
+				except:
+					print "Failed to Mount %s" % mnt_path
 			
 
-			result[parts[0]] = inf
+				result[parts[0]] = inf
 		for disk, info in result.items():
 			string = (disk, " ".join(["%s=%r" % i for i in info.items()]))
 		return mounts
