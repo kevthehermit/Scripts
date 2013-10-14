@@ -58,9 +58,13 @@ def ExtractDrop(enckey, data, outfile):
 	print "### Dropper Information ###"
 	for x in split:
 		try:
-			print base64.b64decode(x).decode('hex')
+			drop = base64.b64decode(x).decode('hex')
+			print drop
+			WriteReport(enckey, outfile, drop)
 		except:
-			print base64.b64decode(x[16:]).decode('hex')
+			drop = base64.b64decode(x[16:]).decode('hex')
+			print drop
+			WriteReport(enckey, outfile, drop)
 	newzipdata = DecryptAES(key, data)
 	from cStringIO import StringIO
 	newZip = StringIO(newzipdata)
