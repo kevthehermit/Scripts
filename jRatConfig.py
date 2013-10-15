@@ -34,75 +34,77 @@ def main():
 	dropper = None
 	conf = None
 	with ZipFile(archive, 'r') as zip:
-		for name in zip.namelist():
-			if name == "key.dat":
+		for name in zip.namelist(): # get all the file names
+			if name == "key.dat": # this file contains the encrytpion key
 				enckey = zip.read(name)
-			if name == "enc.dat":				
+			if name == "enc.dat": # if this file exists, jrat has an installer / dropper				
 				dropper = zip.read(name)
-			if name == "config.dat":
+			if name == "config.dat": # this is the encrypted config file
 				conf = zip.read(name)
-		if dropper != None:
+		if dropper != None: # we need to process the dropper first
 			print "Dropper Detected"
 			ExtractDrop(enckey, dropper, outfile)
-		elif conf != None:
-			if len(enckey) == 16:
+		elif conf != None: # if theres not dropper just decrpyt the config file
+			if len(enckey) == 16: # version > 3.2.3 use AES
 				cleandrop = DecryptAES(enckey, conf)
 				WriteReport(enckey, outfile, cleandrop)
-			elif len(enckey) == 24:
+			elif len(enckey) == 24: # versions <= 3.2.3 use DES
 				cleandrop = DecryptDES(enckey, conf)
 				WriteReport(enckey, outfile, cleandrop)
 
 def ExtractDrop(enckey, data, outfile):
 	split = enckey.split('\x2c')
 	key = split[0][:16]
-	print "### Dropper Information ###"
-	for x in split:
-		try:
-			drop = base64.b64decode(x).decode('hex')
-			print drop
-			WriteReport(enckey, outfile, drop)
-		except:
-			drop = base64.b64decode(x[16:]).decode('hex')
-			print drop
-			WriteReport(enckey, outfile, drop)
+	with open(outfile, 'a') as new:
+		print "### Dropper Information ###"
+		new.write("### Dropper Information ###\n")
+		for x in split: # grab each line of the config and decode it.		
+			try:
+				drop = base64.b64decode(x).decode('hex')
+				print drop
+				new.write(drop+'\n')
+			except:
+				drop = base64.b64decode(x[16:]).decode('hex')
+				print drop
+				new.write(drop+'\n')
 	newzipdata = DecryptAES(key, data)
 	from cStringIO import StringIO
-	newZip = StringIO(newzipdata)
+	newZip = StringIO(newzipdata) # Write new zip file to memory instead of to disk
 	with ZipFile(newZip) as zip:
 		for name in zip.namelist():
-			if name == "key.dat":
+			if name == "key.dat": # contains the encryption key
 				enckey = zip.read(name)
 			if name == "config.dat":
-				conf = zip.read(name)
-			if len(enckey) == 16:
+				conf = zip.read(name) # the encrypted config file
+			if len(enckey) == 16: # version > 3.2.3 use AES
 				printkey = enckey.encode('hex')
 				print "AES Key Found: ", printkey
-				cleandrop = DecryptAES(enckey, conf)
+				cleandrop = DecryptAES(enckey, conf) # pass to the decrpyt function
 				print "### Configuration File ###"
-				WriteReport(enckey, outfile, cleandrop)
-			elif len(enckey) == 24:
+				WriteReport(printkey, outfile, cleandrop)
+			elif len(enckey) == 24: # versions <= 3.2.3 use DES
 				printkey = enckey
 				print "DES Key Found: ", enckey
-				cleandrop = DecryptDES(enckey, conf)
+				cleandrop = DecryptDES(enckey, conf) # pass to the decrpyt function
 				print "### Configuration File ###"
 				WriteReport(enckey, outfile, cleandrop)
 				
 def DecryptAES(enckey, data):					
-		cipher = AES.new(enckey)
-		return cipher.decrypt(data)
+		cipher = AES.new(enckey) # set the cipher
+		return cipher.decrypt(data) # decrpyt the data
 		
 def DecryptDES(enckey, data):
 
-		cipher = DES3.new(enckey)
-		return cipher.decrypt(data)
+		cipher = DES3.new(enckey) # set the ciper
+		return cipher.decrypt(data) # decrpyt the data
 
-def WriteReport(key, outfile, data):		
+def WriteReport(key, outfile, data): # this should be self expanatory		
 	split = data.split("SPLIT")
 	with open(outfile, 'a') as new:
 		new.write(key)
 		new.write('\n')
 		for s in split:
-			stripped = (char for char in s if 32 < ord(char) < 127)
+			stripped = (char for char in s if 32 < ord(char) < 127) # im only interested in ASCII Characters
 			line = ''.join(stripped)
 			#if options.verbose == True:
 			print line
