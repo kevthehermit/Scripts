@@ -30,6 +30,7 @@ def main():
 	parser = OptionParser(usage='usage: %prog [options] ruleName\n' + __description__, version='%prog ' + __version__)
 	parser.add_option("-s", "--RuleSet", action='store_true', default=False, help="Specify a Single RuleSet")
 	parser.add_option("-n", "--RuleName", action='store_true', default=False, help="Specify a Single RuleName")
+	parser.add_option("-l", "--list", action='store_true', default=False, help="List And Coutn All Matches")
 	(options, args) = parser.parse_args()
 	if (options.RuleSet == True or options.RuleName == True) and len(args) != 1:
 		parser.print_help()
@@ -42,9 +43,11 @@ def main():
 	tree = ET.parse(xml)
 	root = tree.getroot()
 
+
+	if options.list == True: # Just list the output of the feed
+		list(root)
+		sys.exit()
 	#Im only interested in rule names and the sha to download
-
-
 	for item in root[0].findall('item'):
 		try:
 			sha256, ruleset, rulename = item.find('title').text.split()
@@ -53,19 +56,19 @@ def main():
 			sys.exit()
 		if options.RuleSet == True:
 			if args[0] == ruleset:
-				download2(sha256, ruleset, rulename)
+				download(sha256, ruleset, rulename)
 		elif options.RuleName == True:
 			if args[0] == rulename:
-				download2(sha256, ruleset, rulename)
+				download(sha256, ruleset, rulename)
 		else:
-			download2(sha256, ruleset, rulename)
+			download(sha256, ruleset, rulename)
 
 	print "\nTotal Hashes in Feed", counter
 	print "Files Skipped", exists
 	print "Files downloaded", downloads		
 
 
-def download2(sha256, ruleset, rulename):
+def download(sha256, ruleset, rulename):
 	global exists, downloads, max_down, counter
 	# create the folder paths
 	if not os.path.exists(os.path.join(ruleset, rulename)):
@@ -89,6 +92,24 @@ def download2(sha256, ruleset, rulename):
 		print "Self Imposed Download Limit Reached"
 	counter +=1
 
+def list(root):
+	counts = {}
+	for item in root[0].findall('item'):
+		try:
+			sha256, ruleset, rulename = item.find('title').text.split()
+			if rulename in counts and (not os.path.exists(os.path.join(ruleset, rulename, sha256))): # if rule is in feed and doesnt exist increment the counter
+				counts[rulename] +=1
+			elif not os.path.exists(os.path.join(ruleset, rulename, sha256)): # If theres no entry in the counter yet set one.
+				counts[rulename] = 1
+		except:
+			print "Could Not Find Valid Title Line, Does your RuleSet, RuleName contain Spaces?"
+			sys.exit()
+	if len(counts) > 0:
+		print "New Items in feed not already saved" # Print the results of the counts
+		for rule, count in counts.items():
+			print rule,count
+	else:
+		print "No New Match's For Download"
 		
 if __name__ == "__main__":
 	if api_key == 'Your Key Here':
