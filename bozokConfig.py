@@ -7,7 +7,9 @@ __description__ = 'Bozok Config Extractor'
 __author__ = 'Kevin Breen http://techanarchy.net'
 __version__ = '0.1'
 __date__ = '2013/11'
+
 import re
+import sys
 from optparse import OptionParser
 
 parser = OptionParser(usage='usage: %prog [options] inFile outConfig\n' + __description__, version='%prog ' + __version__)
