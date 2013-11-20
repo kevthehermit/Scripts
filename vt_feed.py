@@ -6,7 +6,7 @@ Set your API and change max limit as required
 
 __description__ = 'VT Feed Collector'
 __author__ = 'Kevin Breen http://techanarchy.net'
-__version__ = '0.2'
+__version__ = '0.3'
 __date__ = '2013/10'
 
 import sys
@@ -67,7 +67,7 @@ def main():
 	print "Files Skipped", exists
 	print "Files downloaded", downloads		
 
-
+# This is the donwnloads function
 def download(sha256, ruleset, rulename):
 	global exists, downloads, max_down, counter
 	# create the folder paths
@@ -92,6 +92,7 @@ def download(sha256, ruleset, rulename):
 		print "Self Imposed Download Limit Reached"
 	counter +=1
 
+# List all the samples in the feed that dont exist in the sample folders
 def list(root):
 	counts = {}
 	for item in root[0].findall('item'):
