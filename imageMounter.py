@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 '''
 Copyright (C) 2013 Kevin Breen.
-DiskMount
-
+Python script to MNT Partitions on a Disk Image
+http://techanarcy.net
 '''
-__description__ = 'Python script to MNT, and optionally Hash all files from a Disk Image'
+__description__ = 'Python script to MNT Partitions on a Disk Image'
 __author__ = 'Kevin Breen'
-__version__ = '0.2'
-__date__ = '2013/06/30'
+__version__ = '0.3'
+__date__ = '2014/03/16'
 
 
 import os
@@ -21,123 +21,140 @@ from optparse import OptionParser, OptionGroup
 
 def main():
 	parser = OptionParser(usage='usage: %prog [options] image_name mnt_point\n' + __description__, version='%prog ' + __version__)
-	parser.add_option("-m", "--md5", action='store_true', default=False, help="MD5 Each File")
-	parser.add_option("-s", "--ssdeep", action='store_true', default=False, help="ssdeep Each File")
-	parser.add_option("-o", "--output", dest='outFile', help="Output CSV File")
+	parser.add_option("-s", "--single", action='store_true', default=False, help="Single partition in image")
+	parser.add_option("-i", "--info", action='store_true', default=False, help="Just Display the information")
+	parser.add_option("-e", "--E", action='store_true', default=False, help="Use ewfmount to mount E0 Evidence Files")
 	(options, args) = parser.parse_args()
-	if len(args) != 2:
+
+	if len(args) == 0:
+		print "[+] You need to give me some Paths"
 		parser.print_help()
 		sys.exit()
-	imageName = args[0]
-	rootDir = args[1]
-	outFile = options.outFile
-	counter = 0
-	startTime = datetime.now()
-	mounts = mountImage().parse_fdisk(imageName, rootDir)
-	if (options.md5 or options.ssdeep) and not options.outFile:
-		parser.error("You must Specify an output file")
-		parser.print_help()
+	# If i just want to print the Disk info
+	if options.info == True:
+		imageFile = args[0]
+		parts = parse_fdisk(imageFile)
+		#Need to beautify this
+		printInfo(parts)
 		sys.exit()
-	if (options.md5 or options.ssdeep) and options.outFile:
-		for mnt_point in mounts:
-			print "Hashing Mount Point %s "% (mnt_point)
-			for path, subdirs, files in os.walk(mnt_point):
-				for names in files:
-					counter += 1
-					pathName = os.path.join(path, names)
-					md5, deep = hashing().fileHash(pathName, options.md5, options.ssdeep)
-					string = ("%s, %s, %s\n" % (pathName, md5, deep))
-					reportMain(outFile, string)
-		umountChoice = raw_input("Do you wish to unmount: y/n")
-		if umountChoice != "y" or umountChoice != "n":
-			umountChoice = raw_input("Do you wish to unmount: y/n")
-		elif umountChoise == "y":				
-			subprocess.call("(umount %s)"%(mnt_point), shell=True)
-			os.rmdir(mnt_point)
-		elif umountChoice == "n":
-			pass
-	endTime = datetime.now() - startTime
-	print endTime
-	print counter
+	# If my image contains a single parition
+	if  options.single == True:
+		if len(args) != 2:
+			print "[+] You need to specify the image and mount path"
+			parser.print_help()
+			sys.exit()
+		imageFile = args[0]
+		mntPath = args[1]
+		mountSinglePart(imageFile, mntPath)
+	# If my image contains a single parition
+	elif  options.single == False:
+		if len(args) != 2:
+			print "[+] You need to specify the image and mount path"
+			parser.print_help()
+			sys.exit()
+		imageFile = args[0]
+		mntPath = args[1]
+		mountMultiPart(imageFile, mntPath)
+			
+def parse_fdisk(img_name):
+	# get the output of the fdisk command. 
+	try:
+		fdiskOutput = commands.getoutput("(fdisk -l %s)"%(img_name))
+	except:
+		print "[+] Something has gone wrong!"
+		sys.exit()
+	# partInfo dict will hold all the partitions	
+	partInfo = {}
+	#Counter to track all partitions
+	diskPart = 0
+	for line in fdiskOutput.split("\n"):
+		# Get sector size we will need this for Offset calculations
+		if line.startswith("Units"):
+			sector = int(line.split()[6])
+		if line.startswith("This doesn't look like a partition table"):
+			print "[+] This Doesn't Look like a valid Table."
+			print "[+] If this is a single partition try the '-s' option"
+			sys.exit()
+		if not line.startswith(img_name):
+			continue
+		# Now get each of our partitions and create a dict of values		
+		parts = line.split()
+		inf = {}
+		if parts[1] == "*":
+			inf['Bootable'] = True
+			del parts[1]
 
-				
-class hashing:
-	def fileHash(self, filePath, mdHash, deepHash):
-		try:
-			with open(filePath, 'rb') as fh:
-				data = fh.read()
-		except:
-			print "unable to open file %s" % filePath
-			data = None
-		if data != None and mdHash == True:
-			m = hashlib.md5()
-			m.update(data)
-			md5 = m.hexdigest()
 		else:
-			md5 = "Null"
-		if data != None and deepHash == True:
-			import ssdeep
-			deep = ssdeep.hash(data)
-		else:
-			deep = "Null"
-		return md5, deep
+			inf['Bootable'] = False
+		inf["Sector"] = sector
+		inf['Start'] = int(parts[1])
+		inf["Offset"] = inf['Start'] * sector
+		inf['End'] = int(parts[2])
+		inf['Blocks'] = int(parts[3].rstrip("+"))
+		inf['Partition_id'] = int(parts[4], 16)
+		inf['FileSystem'] = " ".join(parts[5:])
 
+		partInfo[diskPart] = inf
+		diskPart += 1
+	return diskPart, partInfo
+
+
+
+def mountSinglePart(imageFile, mntPath):
+
+	print "[+] Creating Temp Mount Point at %s" % mntPath
+	if not os.path.exists(mntPath):
+		os.makedirs(mntPath)
+	print "[+] Attempting to Mount %s at %s" % (imageFile, mntPath)
+	try:
+		retcode = subprocess.call("(mount -o ro,loop,show_sys_files,streams_interface=windows %s %s)"%( imageFile, mntPath), shell=True)
+		#Crappy error Handling here
+		if retcode != 0:
+			sys.exit()
+		print "[+] Mounted %s at %s" % (imageFile, mntPath)
+		print "[+] To unmount run 'sudo umount %s'" % mntPath
+	except:
+		print "[+] Failed to Mount %s" % mntPath
+
+
+def mountMultiPart(imageFile, mntPath):
+	print "[+] Checking Partitions"
+	count, partitions = parse_fdisk(imageFile)
+	print "[+] Found %s partitions" % count
+	for i in range(0,count):
+		mntPath = mntPath+str(i)
+		print "[+] Creating Temp Mount Point at %s" % mntPath
+		if not os.path.exists(mntPath):
+			os.makedirs(mntPath)
+		print "[+] Attempting to Mount Partition %s at %s" % (count, mntPath)
 		
-class reportMain:
-	def __init__(self, outFile, string):
-		with open(outFile, "a") as f:
-			f.write(string)
-			
+		try:
+			offset = partitions[i]["Offset"]
+			sysType = partitions[i]["FileSystem"]
+			if sysType == "HPFS/NTFS/exFAT":
+				sysType = "ntfs"
+			retcode = subprocess.call("(mount -t %s -o ro,loop,offset=%s,show_sys_files,streams_interface=windows %s %s)"%(sysType, offset, imageFile, mntPath), shell=True)
+			print "[+] Mounted %s at %s" % (imageFile, mntPath)
+			print "[+] To unmount run 'sudo umount %s'" % mntPath
+		except:
+			print "[+] Failed to Mount %s" % mntPath
 
-class mountImage:
-	def parse_fdisk(self, img_name, mnt_location):
-		fdisk_output = commands.getoutput("(fdisk -l %s)"%(img_name))
-		print img_name
-		result = {}
-		mounts = []
-		diskPart = 0
-		for line in fdisk_output.split("\n"):
-			if line.startswith("Units"):
-				sector = int(line.split()[6])
-			if not line.startswith(img_name): continue
-			diskPart += 1
-			parts = line.split()
-			inf = {}
-			if parts[1] == "*":
-				inf['bootable'] = True
-				del parts[1]
+def printInfo(parts):
+	count = parts[0]
+	partitions = parts[1]
+	print "[+] There are %s Partitions" % count
+	for i in range(0,count):
+		print "[+] Partition %s" % i
+		print "   [-] Bootable: %s" % partitions[i]["Bootable"]
+		print "   [-] FileSystem: %s" % partitions[i]["FileSystem"]
+		print "   [-] Start: %s, End: %s" % (partitions[i]["Start"],partitions[i]["End"])
+		print "   [-] Calculated Offset: %s" % partitions[i]["Offset"]
 
-			else:
-				inf['bootable'] = False
-
-			inf['start'] = int(parts[1])
-			offset = inf['start'] * sector
-			inf['end'] = int(parts[2])
-			inf['blocks'] = int(parts[3].rstrip("+"))
-			inf['partition_id'] = int(parts[4], 16)
-			inf['partition_id_string'] = " ".join(parts[5:])
-			mnt_path = mnt_location + str(diskPart)
-			mountChoice = raw_input("Do you wish to mount: y/n")
-
-			if mountChoice == "n":				
-				continue
-			elif mountChoice == "y":
-
-				print "Creating Temp Mount Points at %s" % mnt_path
-				if not os.path.exists(mnt_path):
-					os.makedirs(mnt_path)
-				try:
-					retcode = subprocess.call("(mount -t ntfs -o ro,loop,offset=%s %s %s)"%(offset, img_name, mnt_path), shell=True)
-					mounts.append(mnt_path)
-				except:
-					print "Failed to Mount %s" % mnt_path
-			
-
-				result[parts[0]] = inf
-		for disk, info in result.items():
-			string = (disk, " ".join(["%s=%r" % i for i in info.items()]))
-		return mounts
 
 if __name__ == "__main__":
-	main()
+	if os.getuid() == 0:
+		main()
+	else:
+		print "[+] You must be Root or Sudo to run this Script"
+		sys.exit()
 			
