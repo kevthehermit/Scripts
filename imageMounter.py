@@ -6,8 +6,8 @@ http://techanarcy.net
 '''
 __description__ = 'Python script to MNT Partitions on a Disk Image'
 __author__ = 'Kevin Breen'
-__version__ = '0.3'
-__date__ = '2014/03/16'
+__version__ = '0.'
+__date__ = '2014/03/07
 
 
 import os
@@ -37,6 +37,17 @@ def main():
 		#Need to beautify this
 		printInfo(parts)
 		sys.exit()
+	# If im processing E01 Files
+	if options.E == True:
+		imageFile = args[0]
+		mntPath = args[1]
+		ewfPath = ewfMount(imageFile)
+		if options.single == True:
+			mountSinglePart(ewfPath, mntPath)
+
+		elif options.single == False:
+			mountMultiPart(ewfPath, mntPath)
+		sys.exit()			
 	# If my image contains a single parition
 	if  options.single == True:
 		if len(args) != 2:
@@ -134,6 +145,9 @@ def mountMultiPart(imageFile, mntPath):
 			if sysType == "HPFS/NTFS/exFAT":
 				sysType = "ntfs"
 			retcode = subprocess.call("(mount -t %s -o ro,loop,offset=%s,show_sys_files,streams_interface=windows %s %s)"%(sysType, offset, imageFile, mntPath), shell=True)
+			#Crappy error Handling here
+			if retcode != 0:
+				sys.exit()
 			print "[+] Mounted %s at %s" % (imageFile, mntPath)
 			print "[+] To unmount run 'sudo umount %s'" % mntPath
 		except:
@@ -149,6 +163,32 @@ def printInfo(parts):
 		print "   [-] FileSystem: %s" % partitions[i]["FileSystem"]
 		print "   [-] Start: %s, End: %s" % (partitions[i]["Start"],partitions[i]["End"])
 		print "   [-] Calculated Offset: %s" % partitions[i]["Offset"]
+
+
+
+def ewfMount(imageFile):
+	# Wrapper for ewfmount
+	#Check for E01
+	if imageFile.endswith(".E01"):
+		#make the ewf Mount Point
+		ewfPath = "/mnt/ewf4"
+		if not os.path.exists(ewfPath):
+			os.makedirs(ewfPath)
+		#run ewfmount with our E01 File
+		try:
+			retcode = subprocess.call("(ewfmount %s %s)"%(imageFile, ewfPath), shell=True)
+			#Crappy error Handling here
+			if retcode != 0:
+				sys.exit()
+			print "[+] Mounted E0 Files to %s " % ewfPath+"/ewf1"
+			return ewfPath+"/ewf1"
+		except:
+			print "[+] Failed to mount E01"
+			sys.exit()
+	else:
+		print "[+] Not a valid E01 File"
+		sys.exit()	
+
 
 
 if __name__ == "__main__":
