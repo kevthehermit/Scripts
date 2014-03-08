@@ -39,6 +39,10 @@ def main():
 		sys.exit()
 	# If im processing E01 Files
 	if options.E == True:
+		if len(args) != 2:
+			print "[+] You need to specify the image and mount path"
+			parser.print_help()
+			sys.exit()
 		imageFile = args[0]
 		mntPath = args[1]
 		ewfPath = ewfMount(imageFile)
