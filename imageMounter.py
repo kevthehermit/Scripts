@@ -7,7 +7,7 @@ http://techanarcy.net
 __description__ = 'Python script to MNT Partitions on a Disk Image'
 __author__ = 'Kevin Breen'
 __version__ = '0.'
-__date__ = '2014/03/07
+__date__ = '2014/03/07'
 
 
 import os
