@@ -6,7 +6,7 @@ http://techanarcy.net
 '''
 __description__ = 'Python script to MNT Partitions on a Disk Image'
 __author__ = 'Kevin Breen'
-__version__ = '0.'
+__version__ = '0.4'
 __date__ = '2014/03/07'
 
 
@@ -127,7 +127,7 @@ def mountSinglePart(imageFile, mntPath):
 		if retcode != 0:
 			sys.exit()
 		print "[+] Mounted %s at %s" % (imageFile, mntPath)
-		print "[+] To unmount run 'sudo umount %s'" % mntPath
+		print "   [-] To unmount run 'sudo umount %s'" % mntPath
 	except:
 		print "[+] Failed to Mount %s" % mntPath
 
@@ -148,12 +148,13 @@ def mountMultiPart(imageFile, mntPath):
 			sysType = partitions[i]["FileSystem"]
 			if sysType == "HPFS/NTFS/exFAT":
 				sysType = "ntfs"
+			# Add more handling for other format types :)
 			retcode = subprocess.call("(mount -t %s -o ro,loop,offset=%s,show_sys_files,streams_interface=windows %s %s)"%(sysType, offset, imageFile, mntPath), shell=True)
 			#Crappy error Handling here
 			if retcode != 0:
 				sys.exit()
 			print "[+] Mounted %s at %s" % (imageFile, mntPath)
-			print "[+] To unmount run 'sudo umount %s'" % mntPath
+			print "   [-] To unmount run 'sudo umount %s'" % mntPath
 		except:
 			print "[+] Failed to Mount %s" % mntPath
 
@@ -175,7 +176,9 @@ def ewfMount(imageFile):
 	#Check for E01
 	if imageFile.endswith(".E01"):
 		#make the ewf Mount Point
-		ewfPath = "/mnt/ewf4"
+		# get a unique timestamp
+		ts = datetime.now().strftime('%Y_%m_%d-%H_%S')
+		ewfPath = "/mnt/ewf4_"+ts
 		if not os.path.exists(ewfPath):
 			os.makedirs(ewfPath)
 		#run ewfmount with our E01 File
@@ -185,6 +188,7 @@ def ewfMount(imageFile):
 			if retcode != 0:
 				sys.exit()
 			print "[+] Mounted E0 Files to %s " % ewfPath+"/ewf1"
+			print "   [-] To unmount run 'sudo umount %s'" % ewfPath			
 			return ewfPath+"/ewf1"
 		except:
 			print "[+] Failed to mount E01"
@@ -201,4 +205,5 @@ if __name__ == "__main__":
 	else:
 		print "[+] You must be Root or Sudo to run this Script"
 		sys.exit()
+			
 			
