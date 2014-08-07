@@ -146,8 +146,10 @@ def mountMultiPart(imageFile, mntPath):
 		try:
 			offset = partitions[i]["Offset"]
 			sysType = partitions[i]["FileSystem"]
-			if sysType == "HPFS/NTFS/exFAT":
+			if 'HPFS' or 'NTFS' or 'exFAT' in sysType:
 				sysType = "ntfs"
+                        else:
+                                sysType = 'ntfs'
 			# Add more handling for other format types :)
 			retcode = subprocess.call("(mount -t %s -o ro,loop,offset=%s,show_sys_files,streams_interface=windows %s %s)"%(sysType, offset, imageFile, mntPath), shell=True)
 			#Crappy error Handling here
