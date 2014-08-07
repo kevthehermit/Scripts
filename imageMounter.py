@@ -146,7 +146,7 @@ def mountMultiPart(imageFile, mntPath):
 		try:
 			offset = partitions[i]["Offset"]
 			sysType = partitions[i]["FileSystem"]
-			if 'HPFS' or 'NTFS' or 'exFAT' in sysTyp
+			if 'HPFS' or 'NTFS' or 'exFAT' in sysType:
 				sysType = "ntfs"
 			else:
 				sysType = 'ntfs'
