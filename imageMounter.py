@@ -18,7 +18,10 @@ import subprocess
 from datetime import datetime
 from optparse import OptionParser, OptionGroup
 
-supported_types = ['0x83', '0x07', '0x0b', '0x06', '0x17', '0x16', '0x1b']
+supported_types = ['0x83', '0x07', '0x0b', '0x06', '0x17', '0x16', '0x1b', 'Basic data partition']
+vfat = ['0x0b', '0x06', '0x1b', '0x16']
+ntfs = ['0x07', '0x17', 'Basic data partition']
+
 
 def parse_mmls(img_path):
     # use mmls to get a list of partitions.
@@ -43,14 +46,16 @@ def parse_mmls(img_path):
             # Dict for single part
             inf = {}
             line_info = line.split('   ')
-            # Start
-            inf['Start'] = int(line_info[1])
-            # End
-            inf['End'] = int(line_info[2])
-            # Length
-            inf['Length'] = int(line_info[3])
-            # Description
-            inf['Type'] = line_info[4].split('(')[1][:-1]
+            if len(line_info) == 5:
+                inf['Start'] = int(line_info[1])
+                inf['End'] = int(line_info[2])
+                inf['Length'] = int(line_info[3])
+                inf['Type'] = line_info[4].split('(')[1][:-1]
+            elif len(line_info) == 6:
+                inf['Start'] = int(line_info[2])
+                inf['End'] = int(line_info[3])
+                inf['Length'] = int(line_info[4])
+                inf['Type'] = line_info[5]
             # Calculated offset
             inf['Offset'] = inf['Start'] * sector_size
             # add partition to list of all parts
@@ -74,26 +79,26 @@ def mount_single(img_file, mnt_path):
 
 def mount_multi(img_file, mnt_path, part_count, part_data):
     for i in range(part_count):
-        mnt_path = os.path.join(mnt_path, str(i))
-        print "[+] Creating Temp Mount Point at {0}".format(mnt_path)
-        if not os.path.exists(mnt_path):
-            os.makedirs(mnt_path)
-        print "[+] Attempting to Mount Partition {0} at {1}".format(i, mnt_path) 
+        new_path = os.path.join(mnt_path, str(i))
+        print "[+] Creating Temp Mount Point at {0}".format(new_path)
+        if not os.path.exists(new_path):
+            os.makedirs(new_path)
+        print "[+] Attempting to Mount Partition {0} at {1}".format(i, new_path) 
         try:
             offset = part_data[i]["Offset"]
             fs_type = part_data[i]["Type"]
-            if fs_type == '0x0b' or '0x06' or '0x1b' or '0x16':
+            if fs_type in vfat:
                 fs_type = 'vfat'
-            if fs_type == '0x07' or '0x17':
+            if fs_type in ntfs:
                 fs_type = 'ntfs'
-            retcode = subprocess.call('mount -t {0} -o ro,loop,offset={1} {2} {3}'.format(fs_type, offset, img_file, mnt_path), shell=True)
+            retcode = subprocess.call('mount -t {0} -o ro,loop,offset={1} {2} {3}'.format(fs_type, offset, img_file, new_path), shell=True)
             #Crappy error Handling here
             if retcode != 0:
                 sys.exit()
-            print "   [-] Mounted {0} at {1}".format(img_file, mnt_path)
-            print "   [-] To unmount run 'sudo umount {0}'".format(mnt_path)
+            print "   [-] Mounted {0} at {1}".format(img_file, new_path)
+            print "   [-] To unmount run 'sudo umount {0}'".format(new_path)
         except:
-            print "[+] Failed to Mount {0}".format(mnt_path)
+            print "[+] Failed to Mount {0}".format(new_path)
 
 def ewf_mount(img_file):
     print "[+] Processing E01 File"
