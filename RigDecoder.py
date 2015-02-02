@@ -74,6 +74,7 @@ if __name__ == "__main__":
 
         # Write out to file
         if options.tidy:
+            print "[+] Tidying Output"
             out_string = out_string.replace(';',';\n')
             out_string = out_string.replace('}', '}\n')
         with open(output_file, 'w') as out:
@@ -83,15 +84,14 @@ if __name__ == "__main__":
     
         if options.exploits:
             print "Searching for Possible Exploits"
-        if 'ShockwaveFlash' in out_string:
-            print "  [-] Found Possible Flash Exploit"
-        if 'silverlight' in out_string:
-            print "  [-] Found Possible SilverLight Exploit"
-        if 'gum.dashstyle' in out_string:
-            print "  [-] Found Possible Internet Explorer Exploit"    
-        if '<applet>' in out_string:
-            print "  [-] Found Possible Java Exploit"
+            if 'ShockwaveFlash' in out_string:
+                print "  [-] Found Possible Flash Exploit"
+            if 'silverlight' in out_string:
+                print "  [-] Found Possible SilverLight Exploit"
+            if 'gum.dashstyle' in out_string:
+                print "  [-] Found Possible Internet Explorer Exploit"    
+            if '<applet>' in out_string:
+                print "  [-] Found Possible Java Exploit"
 
     except:
 	print "[!] Unable to find Rig EK"
-        sys.exit()
