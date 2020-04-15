@@ -158,7 +158,7 @@ def main():
     parser.add_option("-i", "--info", action='store_true', default=False, help="Just Display the information")
     parser.add_option("-e", "--e01", action='store_true', default=False, help="Use ewfmount to mount E0 Evidence Files")
     parser.add_option("-b", "--bitlocker", action='store_true', default=False, help="Mount Bitlocker Drive with Recovery Key")
-    parser.add_option("-k", "--key", dest='recover_key', default=False, help="Bitlokcer Recovery Key")
+    parser.add_option("-k", "--key", dest='recover_key', default=False, help="Bitlocker Recovery Key")
     (options, args) = parser.parse_args()
 
     if len(args) == 0:
